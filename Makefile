@@ -14,10 +14,19 @@ test-unit:
 test-integration:
 	go test -v ./tests/integration/...
 
+test-integration-verbose:
+	VERBOSE_TESTS=true go test -v ./tests/integration/...
+
 test-all: test-unit test-integration
+
+test-all-verbose: test-unit
+	VERBOSE_TESTS=true go test -v ./tests/integration/...
 
 test:
 	go test -v ./...
+
+test-verbose:
+	VERBOSE_TESTS=true go test -v ./...
 
 # Coverage
 test-coverage:

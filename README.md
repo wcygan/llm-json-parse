@@ -48,3 +48,28 @@ curl -X POST http://localhost:8081/v1/validated-query \
 - Support for structured outputs via llama-server
 - Detailed validation error reporting
 - Health check endpoint
+- Comprehensive integration test suite with interactive output
+
+## Testing
+
+Run tests with different verbosity levels:
+
+```bash
+# Standard test output
+make test-integration
+
+# Interactive pretty-printed output
+make test-integration-verbose
+
+# All tests with verbose output
+make test-all-verbose
+```
+
+### Verbose Test Output
+
+When `VERBOSE_TESTS=true`, integration tests display:
+- 🎨 Colorized JSON with syntax highlighting
+- 📊 Request/response logging with timing
+- 📋 Schema validation visualization
+- ✅ Step-by-step progress tracking
+- 📈 Concurrent test performance metrics

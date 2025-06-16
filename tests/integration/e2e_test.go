@@ -3,6 +3,7 @@ package integration
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -13,6 +14,7 @@ import (
 	"github.com/wcygan/llm-json-parse/internal/client"
 	"github.com/wcygan/llm-json-parse/internal/server"
 	"github.com/wcygan/llm-json-parse/pkg/types"
+	"github.com/wcygan/llm-json-parse/tests/utils"
 )
 
 func TestEndToEndIntegration(t *testing.T) {
@@ -40,6 +42,11 @@ func TestEndToEndIntegration(t *testing.T) {
 
 	// Test successful end-to-end flow
 	t.Run("successful_e2e_flow", func(t *testing.T) {
+		logger := utils.NewTestLogger(t, "successful_e2e_flow")
+		defer logger.Finish()
+
+		logger.LogStep(1, "Setting up test data and schema")
+		
 		requestBody := types.ValidatedQueryRequest{
 			Schema: json.RawMessage(`{
 				"type": "object",
@@ -59,37 +66,82 @@ func TestEndToEndIntegration(t *testing.T) {
 			},
 		}
 
+		// Log the schema being used
+		var schemaObj interface{}
+		json.Unmarshal(requestBody.Schema, &schemaObj)
+		logger.LogSchema(schemaObj)
+
+		logger.LogStep(2, "Sending request to validation gateway")
+		
 		reqBody, err := json.Marshal(requestBody)
 		require.NoError(t, err)
+
+		startTime := time.Now()
+		logger.LogRequest("POST", gatewayServer.URL+"/v1/validated-query", requestBody)
 
 		resp, err := http.Post(
 			gatewayServer.URL+"/v1/validated-query",
 			"application/json",
 			bytes.NewReader(reqBody),
 		)
+		duration := time.Since(startTime)
 		require.NoError(t, err)
 		defer resp.Body.Close()
-
-		assert.Equal(t, http.StatusOK, resp.StatusCode)
 
 		var responseData map[string]interface{}
 		err = json.NewDecoder(resp.Body).Decode(&responseData)
 		require.NoError(t, err)
 
+		logger.LogResponse(resp.StatusCode, responseData, duration)
+
+		logger.LogStep(3, "Validating response structure")
+		
+		assert.Equal(t, http.StatusOK, resp.StatusCode)
+		logger.LogValidation(resp.StatusCode == http.StatusOK, "HTTP status code is 200 OK")
+
 		// Verify the response matches our expected structure
+		logger.LogAssertion("Recipe name validation", "Chocolate Chip Cookies", responseData["name"])
 		assert.Equal(t, "Chocolate Chip Cookies", responseData["name"])
+
+		logger.LogAssertion("Ingredients contain flour", true, func() bool {
+			ingredients, ok := responseData["ingredients"].([]interface{})
+			if !ok {
+				return false
+			}
+			for _, ingredient := range ingredients {
+				if ingredient == "flour" {
+					return true
+				}
+			}
+			return false
+		}())
 		assert.Contains(t, responseData["ingredients"], "flour")
+
+		logger.LogAssertion("Prep time validation", float64(15), responseData["prep_time"])
 		assert.Equal(t, float64(15), responseData["prep_time"])
+
+		logger.LogAssertion("Cook time validation", float64(12), responseData["cook_time"])
 		assert.Equal(t, float64(12), responseData["cook_time"])
+
+		logger.LogTestSummary(true, "All validations passed")
 	})
 
 	// Test validation failure
 	t.Run("validation_failure_e2e", func(t *testing.T) {
+		logger := utils.NewTestLogger(t, "validation_failure_e2e")
+		defer logger.Finish()
+
+		logger.LogStep(1, "Setting up invalid response from mock LLM")
+		
 		// Set up invalid response (missing required field)
 		invalidResponse := `{
 			"ingredients": ["flour", "sugar"]
 		}`
 		mockLLM.SetResponse(invalidResponse, http.StatusOK)
+		
+		var invalidJSON interface{}
+		json.Unmarshal([]byte(invalidResponse), &invalidJSON)
+		logger.LogMockSetup("Mock LLM will return invalid response (missing 'name' field)", invalidJSON)
 
 		requestBody := types.ValidatedQueryRequest{
 			Schema: json.RawMessage(`{
@@ -108,25 +160,45 @@ func TestEndToEndIntegration(t *testing.T) {
 			},
 		}
 
+		var schemaObj interface{}
+		json.Unmarshal(requestBody.Schema, &schemaObj)
+		logger.LogSchema(schemaObj)
+
+		logger.LogStep(2, "Sending request expecting validation failure")
+
 		reqBody, err := json.Marshal(requestBody)
 		require.NoError(t, err)
+
+		startTime := time.Now()
+		logger.LogRequest("POST", gatewayServer.URL+"/v1/validated-query", requestBody)
 
 		resp, err := http.Post(
 			gatewayServer.URL+"/v1/validated-query",
 			"application/json",
 			bytes.NewReader(reqBody),
 		)
+		duration := time.Since(startTime)
 		require.NoError(t, err)
 		defer resp.Body.Close()
-
-		assert.Equal(t, http.StatusUnprocessableEntity, resp.StatusCode)
 
 		var errorResponse types.ValidationError
 		err = json.NewDecoder(resp.Body).Decode(&errorResponse)
 		require.NoError(t, err)
 
+		logger.LogResponse(resp.StatusCode, errorResponse, duration)
+
+		logger.LogStep(3, "Validating error response")
+		
+		assert.Equal(t, http.StatusUnprocessableEntity, resp.StatusCode)
+		logger.LogValidation(resp.StatusCode == http.StatusUnprocessableEntity, "HTTP status code is 422 Unprocessable Entity")
+
 		assert.Equal(t, "Schema validation failed", errorResponse.Error)
+		logger.LogValidation(errorResponse.Error == "Schema validation failed", "Error message indicates schema validation failure")
+
 		assert.Contains(t, errorResponse.Details, "missing properties")
+		logger.LogValidation(true, "Error details mention missing properties")
+
+		logger.LogTestSummary(true, "Validation failure handled correctly")
 	})
 
 	// Test LLM server error handling
@@ -270,11 +342,20 @@ func TestRealWorldSchemas(t *testing.T) {
 }
 
 func TestConcurrentRequests(t *testing.T) {
+	logger := utils.NewTestLogger(t, "concurrent_requests")
+	defer logger.Finish()
+
+	logger.LogStep(1, "Setting up mock LLM and gateway server")
+	
 	mockLLM := NewMockLLMServer()
 	defer mockLLM.Close()
 
 	validResponse := `{"name": "Test Response", "value": 42}`
 	mockLLM.SetResponse(validResponse, http.StatusOK)
+
+	var responseJSON interface{}
+	json.Unmarshal([]byte(validResponse), &responseJSON)
+	logger.LogMockSetup("Mock LLM configured to return", responseJSON)
 
 	llmClient := client.NewLlamaServerClient(mockLLM.URL())
 	srv := server.NewServer(llmClient)
@@ -298,15 +379,24 @@ func TestConcurrentRequests(t *testing.T) {
 		},
 	}
 
+	var schemaObj interface{}
+	json.Unmarshal(requestBody.Schema, &schemaObj)
+	logger.LogSchema(schemaObj)
+
 	reqBody, err := json.Marshal(requestBody)
 	require.NoError(t, err)
 
+	logger.LogStep(2, "Executing concurrent requests")
+	
 	// Send multiple concurrent requests
 	numRequests := 10
 	results := make(chan int, numRequests)
 
+	logger.LogConcurrentTestStart(numRequests)
+	
+	startTime := time.Now()
 	for i := 0; i < numRequests; i++ {
-		go func() {
+		go func(requestID int) {
 			resp, err := http.Post(
 				gatewayServer.URL+"/v1/validated-query",
 				"application/json",
@@ -318,22 +408,34 @@ func TestConcurrentRequests(t *testing.T) {
 			}
 			defer resp.Body.Close()
 			results <- resp.StatusCode
-		}()
+		}(i)
 	}
 
+	logger.LogStep(3, "Collecting results from concurrent requests")
+	
 	// Wait for all requests to complete
 	successCount := 0
+	failedCount := 0
 	timeout := time.After(5 * time.Second)
+	
 	for i := 0; i < numRequests; i++ {
 		select {
 		case status := <-results:
 			if status == http.StatusOK {
 				successCount++
+			} else {
+				failedCount++
 			}
 		case <-timeout:
 			t.Fatal("Timeout waiting for concurrent requests")
 		}
 	}
+	
+	totalDuration := time.Since(startTime)
+	logger.LogConcurrentTestResult(successCount, failedCount, totalDuration)
 
 	assert.Equal(t, numRequests, successCount, "All concurrent requests should succeed")
+	logger.LogValidation(successCount == numRequests, fmt.Sprintf("All %d concurrent requests succeeded", numRequests))
+	
+	logger.LogTestSummary(successCount == numRequests, fmt.Sprintf("Concurrent test completed: %d/%d requests successful", successCount, numRequests))
 }

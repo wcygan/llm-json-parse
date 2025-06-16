@@ -3,9 +3,11 @@ package integration
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -13,6 +15,7 @@ import (
 	"github.com/wcygan/llm-json-parse/internal/server"
 	"github.com/wcygan/llm-json-parse/pkg/types"
 	"github.com/wcygan/llm-json-parse/tests/mocks"
+	"github.com/wcygan/llm-json-parse/tests/utils"
 )
 
 func TestValidatedQueryIntegration(t *testing.T) {
@@ -90,6 +93,11 @@ func TestValidatedQueryIntegration(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			logger := utils.NewTestLogger(t, tt.name)
+			defer logger.Finish()
+
+			logger.LogStep(1, "Setting up mock client and server")
+
 			// Setup mock client
 			mockClient := mocks.NewMockLLMClient()
 			if tt.mockResponse != nil || tt.mockError != nil {
@@ -97,6 +105,8 @@ func TestValidatedQueryIntegration(t *testing.T) {
 					mock.Anything, // Use mock.Anything for context
 					tt.request.Messages, 
 					mock.Anything).Return(tt.mockResponse, tt.mockError) // Use mock.Anything for schema since JSON formatting can vary
+				
+				logger.LogMockSetup("Mock LLM client configured", tt.mockResponse)
 			}
 
 			// Create server with mock client
@@ -108,9 +118,21 @@ func TestValidatedQueryIntegration(t *testing.T) {
 			testServer := httptest.NewServer(mux)
 			defer testServer.Close()
 
+			logger.LogStep(2, "Executing HTTP request")
+
 			// Prepare request
 			reqBody, err := json.Marshal(tt.request)
 			require.NoError(t, err)
+
+			// Log schema if present
+			if len(tt.request.Schema) > 0 {
+				var schemaObj interface{}
+				json.Unmarshal(tt.request.Schema, &schemaObj)
+				logger.LogSchema(schemaObj)
+			}
+
+			startTime := time.Now()
+			logger.LogRequest("POST", testServer.URL+"/v1/validated-query", tt.request)
 
 			// Send request
 			resp, err := http.Post(
@@ -118,23 +140,42 @@ func TestValidatedQueryIntegration(t *testing.T) {
 				"application/json",
 				bytes.NewReader(reqBody),
 			)
+			duration := time.Since(startTime)
 			require.NoError(t, err)
 			defer resp.Body.Close()
 
-			// Verify response
-			assert.Equal(t, tt.expectedStatus, resp.StatusCode)
-
-			if tt.expectedStatus == http.StatusOK {
-				var responseBody interface{}
+			var responseBody interface{}
+			if resp.StatusCode == http.StatusOK && tt.expectedStatus == http.StatusOK {
 				err = json.NewDecoder(resp.Body).Decode(&responseBody)
 				require.NoError(t, err)
+			} else {
+				// For error responses, read as error type
+				var errorBody map[string]interface{}
+				json.NewDecoder(resp.Body).Decode(&errorBody)
+				responseBody = errorBody
+			}
+
+			logger.LogResponse(resp.StatusCode, responseBody, duration)
+
+			logger.LogStep(3, "Validating response")
+
+			// Verify response
+			assert.Equal(t, tt.expectedStatus, resp.StatusCode)
+			logger.LogValidation(resp.StatusCode == tt.expectedStatus, 
+				fmt.Sprintf("HTTP status code matches expected %d", tt.expectedStatus))
+
+			if tt.expectedStatus == http.StatusOK {
+				logger.LogJSONComparison("Response body validation", tt.expectedBody, responseBody)
 				assert.Equal(t, tt.expectedBody, responseBody)
 			}
 
 			// Verify mock was called if expected
 			if tt.mockResponse != nil || tt.mockError != nil {
 				mockClient.AssertExpectations(t)
+				logger.LogValidation(true, "Mock expectations satisfied")
 			}
+
+			logger.LogTestSummary(resp.StatusCode == tt.expectedStatus, "Server integration test completed")
 		})
 	}
 }
