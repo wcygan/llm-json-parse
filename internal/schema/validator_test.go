@@ -127,9 +127,7 @@ func TestValidatorCachingWithValidateSchema(t *testing.T) {
 
 func TestCacheEviction(t *testing.T) {
 	// Create validator with small cache size for testing eviction
-	validator := &Validator{
-		cache: NewSchemaCache(2), // Only cache 2 schemas
-	}
+	validator := NewValidatorWithCacheSize(2) // Only cache 2 schemas
 
 	schemas := []json.RawMessage{
 		json.RawMessage(`{"type": "object", "properties": {"a": {"type": "string"}}}`),

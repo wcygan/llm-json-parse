@@ -12,13 +12,13 @@ import (
 func TestErrorResponse(t *testing.T) {
 	t.Run("basic_error_response", func(t *testing.T) {
 		err := NewErrorResponse(ErrorCodeInvalidRequest, "Invalid input", "Missing required field")
-		
+
 		assert.Equal(t, "error", err.Error)
 		assert.Equal(t, "Invalid input", err.Message)
 		assert.Equal(t, ErrorCodeInvalidRequest, err.Code)
 		assert.Equal(t, "Missing required field", err.Details)
 		assert.NotEmpty(t, err.Timestamp)
-		
+
 		// Verify timestamp is valid RFC3339
 		_, parseErr := time.Parse(time.RFC3339, err.Timestamp)
 		assert.NoError(t, parseErr)
@@ -29,7 +29,7 @@ func TestErrorResponse(t *testing.T) {
 			WithContext("endpoint", "/v1/validated-query").
 			WithContext("retry_after", 30).
 			WithRequestID("test-request-123")
-		
+
 		assert.Equal(t, "test-request-123", err.RequestID)
 		assert.Equal(t, "/v1/validated-query", err.Context["endpoint"])
 		assert.Equal(t, 30, err.Context["retry_after"])
@@ -38,14 +38,14 @@ func TestErrorResponse(t *testing.T) {
 	t.Run("error_response_json_serialization", func(t *testing.T) {
 		err := NewErrorResponse(ErrorCodeInvalidSchema, "Schema error", "Type mismatch").
 			WithRequestID("req-456")
-		
+
 		jsonData, marshalErr := json.Marshal(err)
 		require.NoError(t, marshalErr)
-		
+
 		var unmarshaled ErrorResponse
 		unmarshalErr := json.Unmarshal(jsonData, &unmarshaled)
 		require.NoError(t, unmarshalErr)
-		
+
 		assert.Equal(t, err.Error, unmarshaled.Error)
 		assert.Equal(t, err.Message, unmarshaled.Message)
 		assert.Equal(t, err.Code, unmarshaled.Code)
@@ -57,7 +57,7 @@ func TestValidationError(t *testing.T) {
 	t.Run("basic_validation_error", func(t *testing.T) {
 		responseData := json.RawMessage(`{"name": "test"}`)
 		err := NewValidationError("Validation failed", "Missing age field", responseData)
-		
+
 		assert.Equal(t, "validation_error", err.Error)
 		assert.Equal(t, "Validation failed", err.Message)
 		assert.Equal(t, ErrorCodeValidationFailed, err.Code)
@@ -71,9 +71,9 @@ func TestValidationError(t *testing.T) {
 		err := NewValidationError("Schema mismatch", "Type error", responseData).
 			WithValidationContext("schema_version", "1.0").
 			WithValidationContext("validation_time_ms", 150)
-		
+
 		err.RequestID = "validation-test-789"
-		
+
 		assert.Equal(t, "validation-test-789", err.RequestID)
 		assert.Equal(t, "1.0", err.Context["schema_version"])
 		assert.Equal(t, 150, err.Context["validation_time_ms"])
@@ -82,14 +82,14 @@ func TestValidationError(t *testing.T) {
 	t.Run("validation_error_json_serialization", func(t *testing.T) {
 		responseData := json.RawMessage(`{"test":"response"}`)
 		err := NewValidationError("Test error", "Test details", responseData)
-		
+
 		jsonData, marshalErr := json.Marshal(err)
 		require.NoError(t, marshalErr)
-		
+
 		var unmarshaled ValidationError
 		unmarshalErr := json.Unmarshal(jsonData, &unmarshaled)
 		require.NoError(t, unmarshalErr)
-		
+
 		assert.Equal(t, err.Error, unmarshaled.Error)
 		assert.Equal(t, err.Message, unmarshaled.Message)
 		assert.Equal(t, err.Code, unmarshaled.Code)
