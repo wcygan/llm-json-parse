@@ -22,7 +22,7 @@ func TestValidatedQueryIntegration(t *testing.T) {
 	tests := []struct {
 		name           string
 		request        types.ValidatedQueryRequest
-		mockResponse   interface{}
+		mockResponse   *types.ValidatedResponse
 		mockError      error
 		expectedStatus int
 		expectedBody   interface{}
@@ -42,10 +42,13 @@ func TestValidatedQueryIntegration(t *testing.T) {
 					{Role: "user", Content: "Tell me about John who is 25 years old"},
 				},
 			},
-			mockResponse: map[string]interface{}{
-				"name": "John",
-				"age":  25,
-			},
+			mockResponse: func() *types.ValidatedResponse {
+				data, _ := json.Marshal(map[string]interface{}{
+					"name": "John",
+					"age":  25,
+				})
+				return &types.ValidatedResponse{Data: json.RawMessage(data)}
+			}(),
 			mockError:      nil,
 			expectedStatus: http.StatusOK,
 			expectedBody: map[string]interface{}{
@@ -68,10 +71,13 @@ func TestValidatedQueryIntegration(t *testing.T) {
 					{Role: "user", Content: "Tell me about someone"},
 				},
 			},
-			mockResponse: map[string]interface{}{
-				"name": "John",
-				// Missing required "age" field
-			},
+			mockResponse: func() *types.ValidatedResponse {
+				data, _ := json.Marshal(map[string]interface{}{
+					"name": "John",
+					// Missing required "age" field
+				})
+				return &types.ValidatedResponse{Data: json.RawMessage(data)}
+			}(),
 			mockError:      nil,
 			expectedStatus: http.StatusUnprocessableEntity,
 		},

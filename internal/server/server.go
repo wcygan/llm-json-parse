@@ -55,7 +55,7 @@ func (s *Server) handleValidatedQuery(w http.ResponseWriter, r *http.Request) {
 		validationErr := types.ValidationError{
 			Error:    "Schema validation failed",
 			Details:  err.Error(),
-			Response: response,
+			Response: response.Data,
 		}
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusUnprocessableEntity)
@@ -64,7 +64,7 @@ func (s *Server) handleValidatedQuery(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	json.NewEncoder(w).Encode(response.Data)
 }
 
 func (s *Server) writeError(w http.ResponseWriter, status int, message, details string) {

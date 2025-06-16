@@ -12,9 +12,12 @@ type MockLLMClient struct {
 	mock.Mock
 }
 
-func (m *MockLLMClient) SendStructuredQuery(ctx context.Context, messages []types.Message, schema json.RawMessage) (interface{}, error) {
+func (m *MockLLMClient) SendStructuredQuery(ctx context.Context, messages []types.Message, schema json.RawMessage) (*types.ValidatedResponse, error) {
 	args := m.Called(ctx, messages, schema)
-	return args.Get(0), args.Error(1)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*types.ValidatedResponse), args.Error(1)
 }
 
 func NewMockLLMClient() *MockLLMClient {

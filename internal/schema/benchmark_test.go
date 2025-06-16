@@ -3,11 +3,13 @@ package schema
 import (
 	"encoding/json"
 	"testing"
+
+	"github.com/wcygan/llm-json-parse/pkg/types"
 )
 
 func BenchmarkValidatorWithCache(b *testing.B) {
 	validator := NewValidator()
-	
+
 	schemaJSON := json.RawMessage(`{
 		"type": "object",
 		"properties": {
@@ -18,15 +20,19 @@ func BenchmarkValidatorWithCache(b *testing.B) {
 		"required": ["name", "age"]
 	}`)
 
-	testData := map[string]interface{}{
+	testDataJSON, _ := json.Marshal(map[string]interface{}{
 		"name":  "John Doe",
 		"age":   30,
 		"email": "john@example.com",
+	})
+
+	response := &types.ValidatedResponse{
+		Data: json.RawMessage(testDataJSON),
 	}
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		err := validator.ValidateResponse(schemaJSON, testData)
+		err := validator.ValidateResponse(schemaJSON, response)
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -45,10 +51,14 @@ func BenchmarkValidatorWithoutCache(b *testing.B) {
 		"required": ["name", "age"]
 	}`)
 
-	testData := map[string]interface{}{
+	testDataJSON, _ := json.Marshal(map[string]interface{}{
 		"name":  "John Doe",
 		"age":   30,
 		"email": "john@example.com",
+	})
+
+	response := &types.ValidatedResponse{
+		Data: json.RawMessage(testDataJSON),
 	}
 
 	b.ResetTimer()
@@ -57,7 +67,7 @@ func BenchmarkValidatorWithoutCache(b *testing.B) {
 		validator := &Validator{
 			cache: NewSchemaCache(0), // Zero-size cache effectively disables caching
 		}
-		err := validator.ValidateResponse(schemaJSON, testData)
+		err := validator.ValidateResponse(schemaJSON, response)
 		if err != nil {
 			b.Fatal(err)
 		}

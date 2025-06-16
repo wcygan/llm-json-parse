@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	"github.com/santhosh-tekuri/jsonschema/v5"
+	"github.com/wcygan/llm-json-parse/pkg/types"
 )
 
 // SchemaCache provides thread-safe caching of compiled JSON schemas
@@ -64,13 +65,19 @@ func NewValidator() *Validator {
 	}
 }
 
-func (v *Validator) ValidateResponse(schemaBytes json.RawMessage, response interface{}) error {
+func (v *Validator) ValidateResponse(schemaBytes json.RawMessage, response *types.ValidatedResponse) error {
 	schema, err := v.compileSchema(schemaBytes)
 	if err != nil {
 		return fmt.Errorf("compile schema: %w", err)
 	}
 
-	if err := schema.Validate(response); err != nil {
+	// Unmarshal the response data to validate against schema
+	var responseData interface{}
+	if err := json.Unmarshal(response.Data, &responseData); err != nil {
+		return fmt.Errorf("invalid response JSON: %w", err)
+	}
+
+	if err := schema.Validate(responseData); err != nil {
 		return fmt.Errorf("validation failed: %w", err)
 	}
 

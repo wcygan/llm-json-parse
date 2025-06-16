@@ -12,7 +12,7 @@ import (
 )
 
 type LLMClient interface {
-	SendStructuredQuery(ctx context.Context, messages []types.Message, schema json.RawMessage) (interface{}, error)
+	SendStructuredQuery(ctx context.Context, messages []types.Message, schema json.RawMessage) (*types.ValidatedResponse, error)
 }
 
 type LlamaServerClient struct {
@@ -27,7 +27,7 @@ func NewLlamaServerClient(baseURL string) *LlamaServerClient {
 	}
 }
 
-func (c *LlamaServerClient) SendStructuredQuery(ctx context.Context, messages []types.Message, schema json.RawMessage) (interface{}, error) {
+func (c *LlamaServerClient) SendStructuredQuery(ctx context.Context, messages []types.Message, schema json.RawMessage) (*types.ValidatedResponse, error) {
 	request := types.LLMRequest{
 		Messages: messages,
 		ResponseFormat: &types.ResponseFormat{
@@ -70,10 +70,15 @@ func (c *LlamaServerClient) SendStructuredQuery(ctx context.Context, messages []
 		return nil, fmt.Errorf("no response choices")
 	}
 
-	var result interface{}
-	if err := json.Unmarshal([]byte(llmResponse.Choices[0].Message.Content), &result); err != nil {
-		return nil, fmt.Errorf("unmarshal content: %w", err)
+	// Validate that content is valid JSON by attempting to unmarshal/marshal
+	var temp interface{}
+	content := llmResponse.Choices[0].Message.Content
+	if err := json.Unmarshal([]byte(content), &temp); err != nil {
+		return nil, fmt.Errorf("LLM response is not valid JSON: %w", err)
 	}
 
-	return result, nil
+	// Return as ValidatedResponse with the raw JSON
+	return &types.ValidatedResponse{
+		Data: json.RawMessage(content),
+	}, nil
 }

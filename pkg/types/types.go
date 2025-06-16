@@ -36,8 +36,20 @@ type Choice struct {
 	Message Message `json:"message"`
 }
 
+// ValidatedResponse represents a structured response from LLM validation
+type ValidatedResponse struct {
+	Data     json.RawMessage   `json:"data"`
+	Metadata *ResponseMetadata `json:"metadata,omitempty"`
+}
+
+// ResponseMetadata contains optional metadata about the validation
+type ResponseMetadata struct {
+	SchemaHash     string `json:"schema_hash,omitempty"`
+	ValidationTime string `json:"validation_time,omitempty"`
+}
+
 type ValidationError struct {
-	Error    string      `json:"error"`
-	Details  string      `json:"details"`
-	Response interface{} `json:"response"`
+	Error    string          `json:"error"`
+	Details  string          `json:"details"`
+	Response json.RawMessage `json:"response,omitempty"`
 }

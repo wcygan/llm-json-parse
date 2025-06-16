@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/wcygan/llm-json-parse/internal/schema"
+	"github.com/wcygan/llm-json-parse/pkg/types"
 )
 
 func TestSchemaValidatorIntegration(t *testing.T) {
@@ -173,7 +174,11 @@ func TestSchemaValidatorIntegration(t *testing.T) {
 			require.NoError(t, err, "Schema should be valid")
 
 			// Test data validation
-			err = validator.ValidateResponse(json.RawMessage(tt.schema), tt.data)
+			dataJSON, _ := json.Marshal(tt.data)
+			response := &types.ValidatedResponse{
+				Data: json.RawMessage(dataJSON),
+			}
+			err = validator.ValidateResponse(json.RawMessage(tt.schema), response)
 			if tt.expectValid {
 				assert.NoError(t, err, "Data should be valid according to schema")
 			} else {
@@ -273,7 +278,11 @@ func TestComplexSchemaValidation(t *testing.T) {
 		err := validator.ValidateSchema(json.RawMessage(recipeSchema))
 		require.NoError(t, err)
 
-		err = validator.ValidateResponse(json.RawMessage(recipeSchema), validRecipeData)
+		validDataJSON, _ := json.Marshal(validRecipeData)
+		validResponse := &types.ValidatedResponse{
+			Data: json.RawMessage(validDataJSON),
+		}
+		err = validator.ValidateResponse(json.RawMessage(recipeSchema), validResponse)
 		assert.NoError(t, err)
 	})
 
@@ -284,7 +293,11 @@ func TestComplexSchemaValidation(t *testing.T) {
 		}
 		delete(invalidData, "recipe_name") // Remove required field
 
-		err := validator.ValidateResponse(json.RawMessage(recipeSchema), invalidData)
+		invalidDataJSON, _ := json.Marshal(invalidData)
+		invalidResponse := &types.ValidatedResponse{
+			Data: json.RawMessage(invalidDataJSON),
+		}
+		err := validator.ValidateResponse(json.RawMessage(recipeSchema), invalidResponse)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "missing properties")
 	})
@@ -304,7 +317,11 @@ func TestComplexSchemaValidation(t *testing.T) {
 			},
 		}
 
-		err := validator.ValidateResponse(json.RawMessage(recipeSchema), invalidData)
+		invalidDataJSON, _ := json.Marshal(invalidData)
+		invalidResponse := &types.ValidatedResponse{
+			Data: json.RawMessage(invalidDataJSON),
+		}
+		err := validator.ValidateResponse(json.RawMessage(recipeSchema), invalidResponse)
 		assert.Error(t, err)
 	})
 }
