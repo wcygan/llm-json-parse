@@ -68,8 +68,8 @@ make test-all-verbose
 ### Verbose Test Output
 
 When `VERBOSE_TESTS=true`, integration tests display:
-- 🎨 Colorized JSON with syntax highlighting
-- 📊 Request/response logging with timing
-- 📋 Schema validation visualization
-- ✅ Step-by-step progress tracking
+- 📊 Clean HTTP request/response logging with timing
+- 📋 JSON schema visualization
+- ✅ Step-by-step progress tracking with emojis
 - 📈 Concurrent test performance metrics
+- 🔍 Detailed assertion comparisons

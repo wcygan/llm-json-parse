@@ -35,20 +35,8 @@ func PrettyPrintJSON(data interface{}) string {
 		return fmt.Sprintf("Error formatting JSON: %v", err)
 	}
 	
-	if !VerboseEnabled() {
-		return string(jsonBytes)
-	}
-	
-	// Add syntax highlighting
-	jsonStr := string(jsonBytes)
-	jsonStr = strings.ReplaceAll(jsonStr, "\"", Cyan+"\""+Reset)
-	jsonStr = strings.ReplaceAll(jsonStr, ":", ":"+Reset)
-	jsonStr = strings.ReplaceAll(jsonStr, "{", Bold+"{"+Reset)
-	jsonStr = strings.ReplaceAll(jsonStr, "}", Bold+"}"+Reset)
-	jsonStr = strings.ReplaceAll(jsonStr, "[", Bold+"["+Reset)
-	jsonStr = strings.ReplaceAll(jsonStr, "]", Bold+"]"+Reset)
-	
-	return jsonStr
+	// Always return clean JSON without escape codes for readability
+	return string(jsonBytes)
 }
 
 // PrettyPrintRequest formats an HTTP request for display
@@ -59,9 +47,8 @@ func PrettyPrintRequest(method, url string, body interface{}) string {
 	
 	var output strings.Builder
 	
-	output.WriteString(fmt.Sprintf("%s📤 REQUEST%s %s%s %s%s\n", 
-		Bold+Blue, Reset, Bold+method+Reset, Reset, url, Reset))
-	output.WriteString(strings.Repeat("━", 70) + "\n")
+	output.WriteString(fmt.Sprintf("📤 REQUEST: %s %s\n", method, url))
+	output.WriteString(strings.Repeat("─", 80) + "\n")
 	
 	if body != nil {
 		output.WriteString(PrettyPrintJSON(body))
@@ -79,27 +66,51 @@ func PrettyPrintResponse(statusCode int, body interface{}, duration time.Duratio
 	
 	var output strings.Builder
 	
-	// Status color based on HTTP status code
-	statusColor := Green
-	if statusCode >= 400 && statusCode < 500 {
-		statusColor = Yellow
-	} else if statusCode >= 500 {
-		statusColor = Red
-	}
+	// Add status message based on code
+	statusMsg := getStatusMessage(statusCode)
 	
-	output.WriteString(fmt.Sprintf("\n%s📥 RESPONSE%s %s(%d)%s\n", 
-		Bold+Blue, Reset, statusColor, statusCode, Reset))
-	output.WriteString(strings.Repeat("━", 70) + "\n")
+	output.WriteString(fmt.Sprintf("\n📥 RESPONSE: %d %s\n", statusCode, statusMsg))
+	output.WriteString(strings.Repeat("─", 80) + "\n")
 	
 	if body != nil {
 		output.WriteString(PrettyPrintJSON(body))
 		output.WriteString("\n")
 	}
 	
-	output.WriteString(fmt.Sprintf("\n%s⏱️  Duration:%s %v\n", 
-		Purple, Reset, duration))
+	output.WriteString(fmt.Sprintf("\n⏱️  Duration: %v\n", duration))
 	
 	return output.String()
+}
+
+// getStatusMessage returns a human-readable status message
+func getStatusMessage(statusCode int) string {
+	switch statusCode {
+	case 200:
+		return "OK"
+	case 201:
+		return "Created"
+	case 400:
+		return "Bad Request"
+	case 401:
+		return "Unauthorized"
+	case 403:
+		return "Forbidden"
+	case 404:
+		return "Not Found"
+	case 422:
+		return "Unprocessable Entity"
+	case 500:
+		return "Internal Server Error"
+	default:
+		if statusCode >= 200 && statusCode < 300 {
+			return "Success"
+		} else if statusCode >= 400 && statusCode < 500 {
+			return "Client Error"
+		} else if statusCode >= 500 {
+			return "Server Error"
+		}
+		return "Unknown"
+	}
 }
 
 // PrettyPrintTestHeader creates a decorative test header
@@ -110,9 +121,8 @@ func PrettyPrintTestHeader(testName string) string {
 	
 	var output strings.Builder
 	
-	output.WriteString(fmt.Sprintf("\n%s🧪 Test:%s %s%s%s\n", 
-		Bold+Cyan, Reset, Bold, testName, Reset))
-	output.WriteString(strings.Repeat("━", 70) + "\n")
+	output.WriteString(fmt.Sprintf("\n🧪 Test: %s\n", testName))
+	output.WriteString(strings.Repeat("═", 80) + "\n")
 	
 	return output.String()
 }
@@ -126,11 +136,9 @@ func PrettyPrintValidation(passed bool, message string) string {
 	var output strings.Builder
 	
 	if passed {
-		output.WriteString(fmt.Sprintf("%s✅ Validation: PASSED%s - %s\n", 
-			Green, Reset, message))
+		output.WriteString(fmt.Sprintf("✅ PASSED: %s\n", message))
 	} else {
-		output.WriteString(fmt.Sprintf("%s❌ Validation: FAILED%s - %s\n", 
-			Red, Reset, message))
+		output.WriteString(fmt.Sprintf("❌ FAILED: %s\n", message))
 	}
 	
 	return output.String()
@@ -144,8 +152,8 @@ func PrettyPrintSchema(schema interface{}) string {
 	
 	var output strings.Builder
 	
-	output.WriteString(fmt.Sprintf("%s📋 Schema:%s\n", Bold+Purple, Reset))
-	output.WriteString(strings.Repeat("─", 40) + "\n")
+	output.WriteString("📋 JSON Schema:\n")
+	output.WriteString(strings.Repeat("─", 50) + "\n")
 	output.WriteString(PrettyPrintJSON(schema))
 	output.WriteString("\n")
 	
@@ -158,7 +166,7 @@ func PrettyPrintError(err error) string {
 		return ""
 	}
 	
-	return fmt.Sprintf("%s❌ Error:%s %v\n", Red, Reset, err)
+	return fmt.Sprintf("❌ Error: %v\n", err)
 }
 
 // PrettyPrintSuccess formats success messages
@@ -167,7 +175,7 @@ func PrettyPrintSuccess(message string) string {
 		return ""
 	}
 	
-	return fmt.Sprintf("%s✅ Success:%s %s\n", Green, Reset, message)
+	return fmt.Sprintf("✅ Success: %s\n", message)
 }
 
 // PrettyPrintWarning formats warning messages
@@ -176,7 +184,7 @@ func PrettyPrintWarning(message string) string {
 		return ""
 	}
 	
-	return fmt.Sprintf("%s⚠️  Warning:%s %s\n", Yellow, Reset, message)
+	return fmt.Sprintf("⚠️  Warning: %s\n", message)
 }
 
 // PrettyPrintSeparator creates a visual separator
@@ -185,7 +193,7 @@ func PrettyPrintSeparator() string {
 		return ""
 	}
 	
-	return strings.Repeat("═", 70) + "\n"
+	return strings.Repeat("═", 80) + "\n"
 }
 
 // PrintToConsole outputs formatted text to console (only if verbose mode)

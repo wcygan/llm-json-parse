@@ -3,6 +3,7 @@ package utils
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 )
@@ -74,16 +75,14 @@ func (tl *TestLogger) LogSeparator() {
 // Finish logs test completion with total duration
 func (tl *TestLogger) Finish() {
 	duration := time.Since(tl.startTime)
-	PrintToConsole(fmt.Sprintf("\n%s🏁 Test Completed:%s %v\n", 
-		Bold+Green, Reset, duration))
+	PrintToConsole(fmt.Sprintf("\n🏁 Test Completed: %v\n", duration))
 	PrintToConsole(PrettyPrintSeparator())
 }
 
 // LogStep logs a test step with numbering
 func (tl *TestLogger) LogStep(stepNum int, description string) {
 	if VerboseEnabled() {
-		PrintToConsole(fmt.Sprintf("\n%s📝 Step %d:%s %s\n", 
-			Bold+Cyan, stepNum, Reset, description))
+		PrintToConsole(fmt.Sprintf("\n📝 Step %d: %s\n", stepNum, description))
 	}
 }
 
@@ -96,9 +95,9 @@ func (tl *TestLogger) LogHTTPCall(method, url string, requestBody interface{}, s
 // LogMockSetup logs mock setup information
 func (tl *TestLogger) LogMockSetup(description string, mockData interface{}) {
 	if VerboseEnabled() {
-		PrintToConsole(fmt.Sprintf("\n%s🎭 Mock Setup:%s %s\n", 
-			Bold+Purple, Reset, description))
+		PrintToConsole(fmt.Sprintf("\n🎭 Mock Setup: %s\n", description))
 		if mockData != nil {
+			PrintToConsole(strings.Repeat("─", 40) + "\n")
 			PrintToConsole(PrettyPrintJSON(mockData))
 			PrintToConsole("\n")
 		}
@@ -108,11 +107,10 @@ func (tl *TestLogger) LogMockSetup(description string, mockData interface{}) {
 // LogAssertion logs test assertions
 func (tl *TestLogger) LogAssertion(description string, expected, actual interface{}) {
 	if VerboseEnabled() {
-		PrintToConsole(fmt.Sprintf("\n%s🔍 Assertion:%s %s\n", 
-			Bold+Blue, Reset, description))
-		PrintToConsole(fmt.Sprintf("%sExpected:%s\n", Gray, Reset))
+		PrintToConsole(fmt.Sprintf("\n🔍 Assertion: %s\n", description))
+		PrintToConsole("Expected:\n")
 		PrintToConsole(PrettyPrintJSON(expected))
-		PrintToConsole(fmt.Sprintf("\n%sActual:%s\n", Gray, Reset))
+		PrintToConsole("\nActual:\n")
 		PrintToConsole(PrettyPrintJSON(actual))
 		PrintToConsole("\n")
 	}
@@ -121,8 +119,7 @@ func (tl *TestLogger) LogAssertion(description string, expected, actual interfac
 // LogJSONComparison logs a detailed JSON comparison
 func (tl *TestLogger) LogJSONComparison(description string, expected, actual interface{}) {
 	if VerboseEnabled() {
-		PrintToConsole(fmt.Sprintf("\n%s🔍 JSON Comparison:%s %s\n", 
-			Bold+Blue, Reset, description))
+		PrintToConsole(fmt.Sprintf("\n🔍 JSON Comparison: %s\n", description))
 		
 		expectedJSON, _ := json.MarshalIndent(expected, "", "  ")
 		actualJSON, _ := json.MarshalIndent(actual, "", "  ")
@@ -131,8 +128,8 @@ func (tl *TestLogger) LogJSONComparison(description string, expected, actual int
 			PrintToConsole(PrettyPrintSuccess("JSON structures match"))
 		} else {
 			PrintToConsole(PrettyPrintWarning("JSON structures differ"))
-			PrintToConsole(fmt.Sprintf("%sExpected:%s\n%s\n", Gray, Reset, expectedJSON))
-			PrintToConsole(fmt.Sprintf("%sActual:%s\n%s\n", Gray, Reset, actualJSON))
+			PrintToConsole(fmt.Sprintf("Expected:\n%s\n", expectedJSON))
+			PrintToConsole(fmt.Sprintf("Actual:\n%s\n", actualJSON))
 		}
 	}
 }
@@ -141,11 +138,9 @@ func (tl *TestLogger) LogJSONComparison(description string, expected, actual int
 func (tl *TestLogger) LogTestSummary(passed bool, details string) {
 	if VerboseEnabled() {
 		if passed {
-			PrintToConsole(fmt.Sprintf("\n%s🎉 TEST PASSED:%s %s - %s\n", 
-				Bold+Green, Reset, tl.testName, details))
+			PrintToConsole(fmt.Sprintf("\n🎉 TEST PASSED: %s - %s\n", tl.testName, details))
 		} else {
-			PrintToConsole(fmt.Sprintf("\n%s💥 TEST FAILED:%s %s - %s\n", 
-				Bold+Red, Reset, tl.testName, details))
+			PrintToConsole(fmt.Sprintf("\n💥 TEST FAILED: %s - %s\n", tl.testName, details))
 		}
 	}
 }
@@ -153,18 +148,19 @@ func (tl *TestLogger) LogTestSummary(passed bool, details string) {
 // LogConcurrentTestStart logs the start of concurrent test execution
 func (tl *TestLogger) LogConcurrentTestStart(numRequests int) {
 	if VerboseEnabled() {
-		PrintToConsole(fmt.Sprintf("\n%s🚀 Concurrent Test:%s Starting %d parallel requests\n", 
-			Bold+Yellow, Reset, numRequests))
+		PrintToConsole(fmt.Sprintf("\n🚀 Concurrent Test: Starting %d parallel requests\n", numRequests))
 	}
 }
 
 // LogConcurrentTestResult logs concurrent test results
 func (tl *TestLogger) LogConcurrentTestResult(successful, failed int, totalDuration time.Duration) {
 	if VerboseEnabled() {
-		PrintToConsole(fmt.Sprintf("\n%s📊 Concurrent Results:%s\n", Bold+Cyan, Reset))
-		PrintToConsole(fmt.Sprintf("  %s✅ Successful:%s %d\n", Green, Reset, successful))
-		PrintToConsole(fmt.Sprintf("  %s❌ Failed:%s %d\n", Red, Reset, failed))
-		PrintToConsole(fmt.Sprintf("  %s⏱️  Total Duration:%s %v\n", Purple, Reset, totalDuration))
-		PrintToConsole(fmt.Sprintf("  %s📈 Avg per request:%s %v\n", Blue, Reset, totalDuration/time.Duration(successful+failed)))
+		PrintToConsole("\n📊 Concurrent Results:\n")
+		PrintToConsole(fmt.Sprintf("  ✅ Successful: %d\n", successful))
+		PrintToConsole(fmt.Sprintf("  ❌ Failed: %d\n", failed))
+		PrintToConsole(fmt.Sprintf("  ⏱️  Total Duration: %v\n", totalDuration))
+		if successful+failed > 0 {
+			PrintToConsole(fmt.Sprintf("  📈 Average per request: %v\n", totalDuration/time.Duration(successful+failed)))
+		}
 	}
 }
