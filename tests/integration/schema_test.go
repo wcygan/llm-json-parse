@@ -294,7 +294,7 @@ func TestComplexSchemaValidation(t *testing.T) {
 		for k, v := range validRecipeData {
 			invalidData[k] = v
 		}
-		
+
 		// Set invalid ingredient (missing required "amount")
 		invalidData["ingredients"] = []interface{}{
 			map[string]interface{}{

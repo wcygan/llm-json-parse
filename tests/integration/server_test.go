@@ -101,11 +101,11 @@ func TestValidatedQueryIntegration(t *testing.T) {
 			// Setup mock client
 			mockClient := mocks.NewMockLLMClient()
 			if tt.mockResponse != nil || tt.mockError != nil {
-				mockClient.On("SendStructuredQuery", 
+				mockClient.On("SendStructuredQuery",
 					mock.Anything, // Use mock.Anything for context
-					tt.request.Messages, 
+					tt.request.Messages,
 					mock.Anything).Return(tt.mockResponse, tt.mockError) // Use mock.Anything for schema since JSON formatting can vary
-				
+
 				logger.LogMockSetup("Mock LLM client configured", tt.mockResponse)
 			}
 
@@ -161,7 +161,7 @@ func TestValidatedQueryIntegration(t *testing.T) {
 
 			// Verify response
 			assert.Equal(t, tt.expectedStatus, resp.StatusCode)
-			logger.LogValidation(resp.StatusCode == tt.expectedStatus, 
+			logger.LogValidation(resp.StatusCode == tt.expectedStatus,
 				fmt.Sprintf("HTTP status code matches expected %d", tt.expectedStatus))
 
 			if tt.expectedStatus == http.StatusOK {
@@ -195,7 +195,7 @@ func TestHealthEndpoint(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 	assert.Equal(t, "text/plain", resp.Header.Get("Content-Type"))
-	
+
 	buf := make([]byte, 100)
 	n, _ := resp.Body.Read(buf)
 	body := string(buf[:n])

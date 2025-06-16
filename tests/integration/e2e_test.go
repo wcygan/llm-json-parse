@@ -24,15 +24,15 @@ func skipIfNoLLM(t *testing.T) {
 	if llmURL == "" {
 		llmURL = "http://localhost:8080"
 	}
-	
+
 	// Test if LLM server is available
-	resp, err := http.Post(llmURL+"/v1/chat/completions", "application/json", 
+	resp, err := http.Post(llmURL+"/v1/chat/completions", "application/json",
 		bytes.NewReader([]byte(`{"messages":[{"role":"user","content":"test"}]}`)))
 	if err != nil {
 		t.Skipf("No LLM server available at %s: %v", llmURL, err)
 	}
 	defer resp.Body.Close()
-	
+
 	if resp.StatusCode != http.StatusOK {
 		t.Skipf("LLM server at %s returned status %d", llmURL, resp.StatusCode)
 	}
@@ -61,7 +61,7 @@ func TestEndToEndIntegration(t *testing.T) {
 		defer logger.Finish()
 
 		logger.LogStep(1, "Setting up test data and schema")
-		
+
 		requestBody := types.ValidatedQueryRequest{
 			Schema: json.RawMessage(`{
 				"type": "object",
@@ -83,7 +83,7 @@ func TestEndToEndIntegration(t *testing.T) {
 		logger.LogSchema(schemaObj)
 
 		logger.LogStep(2, "Sending request to validation gateway")
-		
+
 		reqBody, err := json.Marshal(requestBody)
 		require.NoError(t, err)
 
@@ -106,7 +106,7 @@ func TestEndToEndIntegration(t *testing.T) {
 		logger.LogResponse(resp.StatusCode, responseData, duration)
 
 		logger.LogStep(3, "Validating response structure")
-		
+
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 		logger.LogValidation(resp.StatusCode == http.StatusOK, "HTTP status code is 200 OK")
 
@@ -114,7 +114,7 @@ func TestEndToEndIntegration(t *testing.T) {
 		name, hasName := responseData["name"]
 		assert.True(t, hasName, "Response should have 'name' field")
 		logger.LogValidation(hasName, "Response contains required 'name' field")
-		
+
 		if hasName {
 			assert.IsType(t, "", name, "Name should be a string")
 			logger.LogAssertion("Name type validation", "string", fmt.Sprintf("%T", name))
@@ -178,7 +178,7 @@ func TestEndToEndIntegration(t *testing.T) {
 		logger.LogResponse(resp.StatusCode, errorResponse, duration)
 
 		logger.LogStep(3, "Validating error response")
-		
+
 		assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
 		logger.LogValidation(resp.StatusCode == http.StatusBadRequest, "HTTP status code is 400 Bad Request")
 
@@ -246,7 +246,7 @@ func TestRealWorldSchemas(t *testing.T) {
 			// Verify required fields
 			assert.Contains(t, responseData, "name")
 			assert.Contains(t, responseData, "price")
-			
+
 			// Verify types
 			assert.IsType(t, "", responseData["name"])
 			assert.IsType(t, float64(0), responseData["price"])
@@ -258,12 +258,12 @@ func TestRealWorldSchemas(t *testing.T) {
 
 func TestConcurrentRequests(t *testing.T) {
 	skipIfNoLLM(t)
-	
+
 	logger := utils.NewTestLogger(t, "concurrent_requests")
 	defer logger.Finish()
 
 	logger.LogStep(1, "Setting up real LLM and gateway server")
-	
+
 	llmURL := os.Getenv("LLM_SERVER_URL")
 	if llmURL == "" {
 		llmURL = "http://localhost:8080"
@@ -299,13 +299,13 @@ func TestConcurrentRequests(t *testing.T) {
 	require.NoError(t, err)
 
 	logger.LogStep(2, "Executing concurrent requests")
-	
+
 	// Send multiple concurrent requests (fewer with real LLM for performance)
 	numRequests := 3
 	results := make(chan int, numRequests)
 
 	logger.LogConcurrentTestStart(numRequests)
-	
+
 	startTime := time.Now()
 	for i := 0; i < numRequests; i++ {
 		go func(requestID int) {
@@ -324,12 +324,12 @@ func TestConcurrentRequests(t *testing.T) {
 	}
 
 	logger.LogStep(3, "Collecting results from concurrent requests")
-	
+
 	// Wait for all requests to complete (longer timeout for real LLM)
 	successCount := 0
 	failedCount := 0
 	timeout := time.After(30 * time.Second)
-	
+
 	for i := 0; i < numRequests; i++ {
 		select {
 		case status := <-results:
@@ -343,12 +343,12 @@ func TestConcurrentRequests(t *testing.T) {
 			t.Fatal("Timeout waiting for concurrent requests")
 		}
 	}
-	
+
 	totalDuration := time.Since(startTime)
 	logger.LogConcurrentTestResult(successCount, failedCount, totalDuration)
 
 	assert.Equal(t, numRequests, successCount, "All concurrent requests should complete")
 	logger.LogValidation(successCount == numRequests, fmt.Sprintf("All %d concurrent requests completed", numRequests))
-	
+
 	logger.LogTestSummary(successCount == numRequests, fmt.Sprintf("Concurrent test completed: %d/%d requests successful", successCount, numRequests))
 }

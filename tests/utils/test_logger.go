@@ -22,10 +22,10 @@ func NewTestLogger(t *testing.T, testName string) *TestLogger {
 		testName:  testName,
 		startTime: time.Now(),
 	}
-	
+
 	// Print test header
 	PrintToConsole(PrettyPrintTestHeader(testName))
-	
+
 	return logger
 }
 
@@ -120,10 +120,10 @@ func (tl *TestLogger) LogAssertion(description string, expected, actual interfac
 func (tl *TestLogger) LogJSONComparison(description string, expected, actual interface{}) {
 	if VerboseEnabled() {
 		PrintToConsole(fmt.Sprintf("\n🔍 JSON Comparison: %s\n", description))
-		
+
 		expectedJSON, _ := json.MarshalIndent(expected, "", "  ")
 		actualJSON, _ := json.MarshalIndent(actual, "", "  ")
-		
+
 		if string(expectedJSON) == string(actualJSON) {
 			PrintToConsole(PrettyPrintSuccess("JSON structures match"))
 		} else {

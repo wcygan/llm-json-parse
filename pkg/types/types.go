@@ -13,8 +13,8 @@ type ValidatedQueryRequest struct {
 }
 
 type LLMRequest struct {
-	Messages       []Message              `json:"messages"`
-	ResponseFormat *ResponseFormat        `json:"response_format,omitempty"`
+	Messages       []Message       `json:"messages"`
+	ResponseFormat *ResponseFormat `json:"response_format,omitempty"`
 }
 
 type ResponseFormat struct {

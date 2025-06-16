@@ -34,7 +34,7 @@ func PrettyPrintJSON(data interface{}) string {
 	if err != nil {
 		return fmt.Sprintf("Error formatting JSON: %v", err)
 	}
-	
+
 	// Always return clean JSON without escape codes for readability
 	return string(jsonBytes)
 }
@@ -44,17 +44,17 @@ func PrettyPrintRequest(method, url string, body interface{}) string {
 	if !VerboseEnabled() {
 		return ""
 	}
-	
+
 	var output strings.Builder
-	
+
 	output.WriteString(fmt.Sprintf("📤 REQUEST: %s %s\n", method, url))
 	output.WriteString(strings.Repeat("─", 80) + "\n")
-	
+
 	if body != nil {
 		output.WriteString(PrettyPrintJSON(body))
 		output.WriteString("\n")
 	}
-	
+
 	return output.String()
 }
 
@@ -63,22 +63,22 @@ func PrettyPrintResponse(statusCode int, body interface{}, duration time.Duratio
 	if !VerboseEnabled() {
 		return ""
 	}
-	
+
 	var output strings.Builder
-	
+
 	// Add status message based on code
 	statusMsg := getStatusMessage(statusCode)
-	
+
 	output.WriteString(fmt.Sprintf("\n📥 RESPONSE: %d %s\n", statusCode, statusMsg))
 	output.WriteString(strings.Repeat("─", 80) + "\n")
-	
+
 	if body != nil {
 		output.WriteString(PrettyPrintJSON(body))
 		output.WriteString("\n")
 	}
-	
+
 	output.WriteString(fmt.Sprintf("\n⏱️  Duration: %v\n", duration))
-	
+
 	return output.String()
 }
 
@@ -118,12 +118,12 @@ func PrettyPrintTestHeader(testName string) string {
 	if !VerboseEnabled() {
 		return ""
 	}
-	
+
 	var output strings.Builder
-	
+
 	output.WriteString(fmt.Sprintf("\n🧪 Test: %s\n", testName))
 	output.WriteString(strings.Repeat("═", 80) + "\n")
-	
+
 	return output.String()
 }
 
@@ -132,15 +132,15 @@ func PrettyPrintValidation(passed bool, message string) string {
 	if !VerboseEnabled() {
 		return ""
 	}
-	
+
 	var output strings.Builder
-	
+
 	if passed {
 		output.WriteString(fmt.Sprintf("✅ PASSED: %s\n", message))
 	} else {
 		output.WriteString(fmt.Sprintf("❌ FAILED: %s\n", message))
 	}
-	
+
 	return output.String()
 }
 
@@ -149,14 +149,14 @@ func PrettyPrintSchema(schema interface{}) string {
 	if !VerboseEnabled() {
 		return ""
 	}
-	
+
 	var output strings.Builder
-	
+
 	output.WriteString("📋 JSON Schema:\n")
 	output.WriteString(strings.Repeat("─", 50) + "\n")
 	output.WriteString(PrettyPrintJSON(schema))
 	output.WriteString("\n")
-	
+
 	return output.String()
 }
 
@@ -165,7 +165,7 @@ func PrettyPrintError(err error) string {
 	if !VerboseEnabled() || err == nil {
 		return ""
 	}
-	
+
 	return fmt.Sprintf("❌ Error: %v\n", err)
 }
 
@@ -174,7 +174,7 @@ func PrettyPrintSuccess(message string) string {
 	if !VerboseEnabled() {
 		return ""
 	}
-	
+
 	return fmt.Sprintf("✅ Success: %s\n", message)
 }
 
@@ -183,7 +183,7 @@ func PrettyPrintWarning(message string) string {
 	if !VerboseEnabled() {
 		return ""
 	}
-	
+
 	return fmt.Sprintf("⚠️  Warning: %s\n", message)
 }
 
@@ -192,7 +192,7 @@ func PrettyPrintSeparator() string {
 	if !VerboseEnabled() {
 		return ""
 	}
-	
+
 	return strings.Repeat("═", 80) + "\n"
 }
 
@@ -208,9 +208,9 @@ func FormatHTTPRequest(req *http.Request) string {
 	if !VerboseEnabled() {
 		return ""
 	}
-	
+
 	var buf bytes.Buffer
-	
+
 	// Read body if present
 	if req.Body != nil {
 		bodyBytes := make([]byte, 1024)
@@ -224,6 +224,6 @@ func FormatHTTPRequest(req *http.Request) string {
 			}
 		}
 	}
-	
+
 	return buf.String()
 }
