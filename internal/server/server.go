@@ -1,6 +1,8 @@
 package server
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"log"
 	"net/http"
@@ -34,32 +36,30 @@ func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleValidatedQuery(w http.ResponseWriter, r *http.Request) {
+	requestID := s.generateRequestID()
+
 	var req types.ValidatedQueryRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		s.writeError(w, http.StatusBadRequest, "Invalid request", err.Error())
+		s.writeErrorResponse(w, http.StatusBadRequest, types.ErrorCodeInvalidRequest,
+			"Invalid request body", err.Error(), requestID)
 		return
 	}
 
 	if err := s.validator.ValidateSchema(req.Schema); err != nil {
-		s.writeError(w, http.StatusBadRequest, "Invalid schema", err.Error())
+		s.writeErrorResponse(w, http.StatusBadRequest, types.ErrorCodeInvalidSchema,
+			"Invalid JSON schema", err.Error(), requestID)
 		return
 	}
 
 	response, err := s.llmClient.SendStructuredQuery(r.Context(), req.Messages, req.Schema)
 	if err != nil {
-		s.writeError(w, http.StatusInternalServerError, "LLM error", err.Error())
+		s.writeErrorResponse(w, http.StatusInternalServerError, types.ErrorCodeLLMError,
+			"LLM service error", err.Error(), requestID)
 		return
 	}
 
 	if err := s.validator.ValidateResponse(req.Schema, response); err != nil {
-		validationErr := types.ValidationError{
-			Error:    "Schema validation failed",
-			Details:  err.Error(),
-			Response: response.Data,
-		}
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusUnprocessableEntity)
-		json.NewEncoder(w).Encode(validationErr)
+		s.writeValidationError(w, "Schema validation failed", err.Error(), response.Data, requestID)
 		return
 	}
 
@@ -67,12 +67,36 @@ func (s *Server) handleValidatedQuery(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(response.Data)
 }
 
-func (s *Server) writeError(w http.ResponseWriter, status int, message, details string) {
+// generateRequestID creates a unique request identifier
+func (s *Server) generateRequestID() string {
+	bytes := make([]byte, 8)
+	rand.Read(bytes)
+	return hex.EncodeToString(bytes)
+}
+
+// writeErrorResponse writes a standardized error response
+func (s *Server) writeErrorResponse(w http.ResponseWriter, status int, code, message, details string, requestID string) {
+	errorResp := types.NewErrorResponse(code, message, details).WithRequestID(requestID)
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(map[string]string{
-		"error":   message,
-		"details": details,
-	})
-	log.Printf("Error: %s - %s", message, details)
+	json.NewEncoder(w).Encode(errorResp)
+
+	log.Printf("Error [%s]: %s - %s (%s)", requestID, message, details, code)
+}
+
+// writeValidationError writes a standardized validation error response
+func (s *Server) writeValidationError(w http.ResponseWriter, message, details string, responseData json.RawMessage, requestID string) {
+	validationErr := types.NewValidationError(message, details, responseData).
+		WithValidationContext("endpoint", "/v1/validated-query")
+
+	if requestID != "" {
+		validationErr.RequestID = requestID
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusUnprocessableEntity)
+	json.NewEncoder(w).Encode(validationErr)
+
+	log.Printf("Validation Error [%s]: %s - %s", requestID, message, details)
 }
