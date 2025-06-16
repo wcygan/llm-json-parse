@@ -1,0 +1,462 @@
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<title>server: Go Coverage Report</title>
+		<style>
+			body {
+				background: black;
+				color: rgb(80, 80, 80);
+			}
+			body, pre, #legend span {
+				font-family: Menlo, monospace;
+				font-weight: bold;
+			}
+			#topbar {
+				background: black;
+				position: fixed;
+				top: 0; left: 0; right: 0;
+				height: 42px;
+				border-bottom: 1px solid rgb(80, 80, 80);
+			}
+			#content {
+				margin-top: 50px;
+			}
+			#nav, #legend {
+				float: left;
+				margin-left: 10px;
+			}
+			#legend {
+				margin-top: 12px;
+			}
+			#nav {
+				margin-top: 10px;
+			}
+			#legend span {
+				margin: 0 5px;
+			}
+			.cov0 { color: rgb(192, 0, 0) }
+.cov1 { color: rgb(128, 128, 128) }
+.cov2 { color: rgb(116, 140, 131) }
+.cov3 { color: rgb(104, 152, 134) }
+.cov4 { color: rgb(92, 164, 137) }
+.cov5 { color: rgb(80, 176, 140) }
+.cov6 { color: rgb(68, 188, 143) }
+.cov7 { color: rgb(56, 200, 146) }
+.cov8 { color: rgb(44, 212, 149) }
+.cov9 { color: rgb(32, 224, 152) }
+.cov10 { color: rgb(20, 236, 155) }
+
+		</style>
+	</head>
+	<body>
+		<div id="topbar">
+			<div id="nav">
+				<select id="files">
+				
+				<option value="file0">github.com/wcygan/llm-json-parse/cmd/server/main.go (0.0%)</option>
+				
+				<option value="file1">github.com/wcygan/llm-json-parse/internal/client/llm.go (0.0%)</option>
+				
+				<option value="file2">github.com/wcygan/llm-json-parse/internal/schema/validator.go (0.0%)</option>
+				
+				<option value="file3">github.com/wcygan/llm-json-parse/internal/server/server.go (0.0%)</option>
+				
+				<option value="file4">github.com/wcygan/llm-json-parse/tests/integration/mock_llm_server.go (87.5%)</option>
+				
+				<option value="file5">github.com/wcygan/llm-json-parse/tests/mocks/llm_client.go (0.0%)</option>
+				
+				</select>
+			</div>
+			<div id="legend">
+				<span>not tracked</span>
+			
+				<span class="cov0">not covered</span>
+				<span class="cov8">covered</span>
+			
+			</div>
+		</div>
+		<div id="content">
+		
+		<pre class="file" id="file0" style="display: none">package main
+
+import (
+        "fmt"
+        "log"
+        "net/http"
+        "os"
+
+        "github.com/wcygan/llm-json-parse/internal/client"
+        "github.com/wcygan/llm-json-parse/internal/server"
+)
+
+func main() <span class="cov0" title="0">{
+        llmServerURL := os.Getenv("LLM_SERVER_URL")
+        if llmServerURL == "" </span><span class="cov0" title="0">{
+                llmServerURL = "http://localhost:8080"
+        }</span>
+
+        <span class="cov0" title="0">port := os.Getenv("PORT")
+        if port == "" </span><span class="cov0" title="0">{
+                port = "8081"
+        }</span>
+
+        <span class="cov0" title="0">llmClient := client.NewLlamaServerClient(llmServerURL)
+        srv := server.NewServer(llmClient)
+
+        mux := http.NewServeMux()
+        srv.RegisterRoutes(mux)
+
+        addr := ":" + port
+        fmt.Printf("Server starting on %s\n", addr)
+        fmt.Printf("LLM Server URL: %s\n", llmServerURL)
+
+        if err := http.ListenAndServe(addr, mux); err != nil </span><span class="cov0" title="0">{
+                log.Fatal("Server failed to start:", err)
+        }</span>
+}</pre>
+		
+		<pre class="file" id="file1" style="display: none">package client
+
+import (
+        "bytes"
+        "context"
+        "encoding/json"
+        "fmt"
+        "net/http"
+        "time"
+
+        "github.com/wcygan/llm-json-parse/pkg/types"
+)
+
+type LLMClient interface {
+        SendStructuredQuery(ctx context.Context, messages []types.Message, schema json.RawMessage) (interface{}, error)
+}
+
+type LlamaServerClient struct {
+        baseURL string
+        client  *http.Client
+}
+
+func NewLlamaServerClient(baseURL string) *LlamaServerClient <span class="cov0" title="0">{
+        return &amp;LlamaServerClient{
+                baseURL: baseURL,
+                client:  &amp;http.Client{Timeout: 30 * time.Second},
+        }
+}</span>
+
+func (c *LlamaServerClient) SendStructuredQuery(ctx context.Context, messages []types.Message, schema json.RawMessage) (interface{}, error) <span class="cov0" title="0">{
+        request := types.LLMRequest{
+                Messages: messages,
+                ResponseFormat: &amp;types.ResponseFormat{
+                        Type: "json_schema",
+                        JSONSchema: types.JSONSchema{
+                                Name:   "response",
+                                Strict: true,
+                                Schema: schema,
+                        },
+                },
+        }
+
+        reqBody, err := json.Marshal(request)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("marshal request: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">httpReq, err := http.NewRequestWithContext(ctx, "POST", c.baseURL+"/v1/chat/completions", bytes.NewReader(reqBody))
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("create request: %w", err)
+        }</span>
+        <span class="cov0" title="0">httpReq.Header.Set("Content-Type", "application/json")
+
+        resp, err := c.client.Do(httpReq)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("http request: %w", err)
+        }</span>
+        <span class="cov0" title="0">defer resp.Body.Close()
+
+        if resp.StatusCode != http.StatusOK </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("LLM server returned status %d", resp.StatusCode)
+        }</span>
+
+        <span class="cov0" title="0">var llmResponse types.LLMResponse
+        if err := json.NewDecoder(resp.Body).Decode(&amp;llmResponse); err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("decode response: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">if len(llmResponse.Choices) == 0 </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("no response choices")
+        }</span>
+
+        <span class="cov0" title="0">var result interface{}
+        if err := json.Unmarshal([]byte(llmResponse.Choices[0].Message.Content), &amp;result); err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("unmarshal content: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">return result, nil</span>
+}</pre>
+		
+		<pre class="file" id="file2" style="display: none">package schema
+
+import (
+        "crypto/sha256"
+        "encoding/json"
+        "fmt"
+        "strings"
+
+        "github.com/santhosh-tekuri/jsonschema/v5"
+)
+
+type Validator struct{}
+
+func NewValidator() *Validator <span class="cov0" title="0">{
+        return &amp;Validator{}
+}</span>
+
+func (v *Validator) ValidateResponse(schemaBytes json.RawMessage, response interface{}) error <span class="cov0" title="0">{
+        schema, err := v.compileSchema(schemaBytes)
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("compile schema: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">if err := schema.Validate(response); err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("validation failed: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">return nil</span>
+}
+
+func (v *Validator) ValidateSchema(schemaBytes json.RawMessage) error <span class="cov0" title="0">{
+        _, err := v.compileSchema(schemaBytes)
+        if err != nil </span><span class="cov0" title="0">{
+                return fmt.Errorf("invalid schema: %w", err)
+        }</span>
+        <span class="cov0" title="0">return nil</span>
+}
+
+func (v *Validator) compileSchema(schemaBytes json.RawMessage) (*jsonschema.Schema, error) <span class="cov0" title="0">{
+        // Parse JSON first to ensure it's valid
+        var schemaObj interface{}
+        if err := json.Unmarshal(schemaBytes, &amp;schemaObj); err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("invalid JSON: %w", err)
+        }</span>
+
+        // Create a new compiler for each validation to avoid conflicts
+        <span class="cov0" title="0">compiler := jsonschema.NewCompiler()
+
+        // Generate unique URL based on schema content
+        hash := sha256.Sum256(schemaBytes)
+        schemaURL := fmt.Sprintf("https://example.com/schema-%x.json", hash[:8])
+
+        // Add the schema as a resource to the compiler
+        if err := compiler.AddResource(schemaURL, strings.NewReader(string(schemaBytes))); err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("add schema resource: %w", err)
+        }</span>
+
+        // Compile the schema
+        <span class="cov0" title="0">schema, err := compiler.Compile(schemaURL)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("compile schema: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">return schema, nil</span>
+}</pre>
+		
+		<pre class="file" id="file3" style="display: none">package server
+
+import (
+        "encoding/json"
+        "log"
+        "net/http"
+
+        "github.com/wcygan/llm-json-parse/internal/client"
+        "github.com/wcygan/llm-json-parse/internal/schema"
+        "github.com/wcygan/llm-json-parse/pkg/types"
+)
+
+type Server struct {
+        llmClient client.LLMClient
+        validator *schema.Validator
+}
+
+func NewServer(llmClient client.LLMClient) *Server <span class="cov0" title="0">{
+        return &amp;Server{
+                llmClient: llmClient,
+                validator: schema.NewValidator(),
+        }
+}</span>
+
+func (s *Server) RegisterRoutes(mux *http.ServeMux) <span class="cov0" title="0">{
+        mux.HandleFunc("POST /v1/validated-query", s.handleValidatedQuery)
+        mux.HandleFunc("GET /health", s.handleHealth)
+}</span>
+
+func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) <span class="cov0" title="0">{
+        w.Header().Set("Content-Type", "text/plain")
+        w.WriteHeader(http.StatusOK)
+        w.Write([]byte("OK"))
+}</span>
+
+func (s *Server) handleValidatedQuery(w http.ResponseWriter, r *http.Request) <span class="cov0" title="0">{
+        var req types.ValidatedQueryRequest
+        if err := json.NewDecoder(r.Body).Decode(&amp;req); err != nil </span><span class="cov0" title="0">{
+                s.writeError(w, http.StatusBadRequest, "Invalid request", err.Error())
+                return
+        }</span>
+
+        <span class="cov0" title="0">if err := s.validator.ValidateSchema(req.Schema); err != nil </span><span class="cov0" title="0">{
+                s.writeError(w, http.StatusBadRequest, "Invalid schema", err.Error())
+                return
+        }</span>
+
+        <span class="cov0" title="0">response, err := s.llmClient.SendStructuredQuery(r.Context(), req.Messages, req.Schema)
+        if err != nil </span><span class="cov0" title="0">{
+                s.writeError(w, http.StatusInternalServerError, "LLM error", err.Error())
+                return
+        }</span>
+
+        <span class="cov0" title="0">if err := s.validator.ValidateResponse(req.Schema, response); err != nil </span><span class="cov0" title="0">{
+                validationErr := types.ValidationError{
+                        Error:    "Schema validation failed",
+                        Details:  err.Error(),
+                        Response: response,
+                }
+                w.Header().Set("Content-Type", "application/json")
+                w.WriteHeader(http.StatusUnprocessableEntity)
+                json.NewEncoder(w).Encode(validationErr)
+                return
+        }</span>
+
+        <span class="cov0" title="0">w.Header().Set("Content-Type", "application/json")
+        json.NewEncoder(w).Encode(response)</span>
+}
+
+func (s *Server) writeError(w http.ResponseWriter, status int, message, details string) <span class="cov0" title="0">{
+        w.Header().Set("Content-Type", "application/json")
+        w.WriteHeader(status)
+        json.NewEncoder(w).Encode(map[string]string{
+                "error":   message,
+                "details": details,
+        })
+        log.Printf("Error: %s - %s", message, details)
+}</pre>
+		
+		<pre class="file" id="file4" style="display: none">package integration
+
+import (
+        "encoding/json"
+        "net/http"
+        "net/http/httptest"
+
+        "github.com/wcygan/llm-json-parse/pkg/types"
+)
+
+// MockLLMServer creates a test HTTP server that mimics llama-server behavior
+type MockLLMServer struct {
+        server   *httptest.Server
+        response *types.LLMResponse
+        status   int
+}
+
+func NewMockLLMServer() *MockLLMServer <span class="cov8" title="1">{
+        mock := &amp;MockLLMServer{
+                status: http.StatusOK,
+        }
+
+        mux := http.NewServeMux()
+        mux.HandleFunc("/v1/chat/completions", mock.handleCompletion)
+
+        mock.server = httptest.NewServer(mux)
+        return mock
+}</span>
+
+func (m *MockLLMServer) URL() string <span class="cov8" title="1">{
+        return m.server.URL
+}</span>
+
+func (m *MockLLMServer) Close() <span class="cov8" title="1">{
+        m.server.Close()
+}</span>
+
+func (m *MockLLMServer) SetResponse(content string, status int) <span class="cov8" title="1">{
+        m.response = &amp;types.LLMResponse{
+                Choices: []types.Choice{
+                        {
+                                Message: types.Message{
+                                        Role:    "assistant",
+                                        Content: content,
+                                },
+                        },
+                },
+        }
+        m.status = status
+}</span>
+
+func (m *MockLLMServer) handleCompletion(w http.ResponseWriter, r *http.Request) <span class="cov8" title="1">{
+        if r.Method != http.MethodPost </span><span class="cov0" title="0">{
+                w.WriteHeader(http.StatusMethodNotAllowed)
+                return
+        }</span>
+
+        <span class="cov8" title="1">w.Header().Set("Content-Type", "application/json")
+        w.WriteHeader(m.status)
+
+        if m.response != nil </span><span class="cov8" title="1">{
+                json.NewEncoder(w).Encode(m.response)
+        }</span>
+}</pre>
+		
+		<pre class="file" id="file5" style="display: none">package mocks
+
+import (
+        "context"
+        "encoding/json"
+
+        "github.com/stretchr/testify/mock"
+        "github.com/wcygan/llm-json-parse/pkg/types"
+)
+
+type MockLLMClient struct {
+        mock.Mock
+}
+
+func (m *MockLLMClient) SendStructuredQuery(ctx context.Context, messages []types.Message, schema json.RawMessage) (interface{}, error) <span class="cov0" title="0">{
+        args := m.Called(ctx, messages, schema)
+        return args.Get(0), args.Error(1)
+}</span>
+
+func NewMockLLMClient() *MockLLMClient <span class="cov0" title="0">{
+        return &amp;MockLLMClient{}
+}</pre>
+		
+		</div>
+	</body>
+	<script>
+	(function() {
+		var files = document.getElementById('files');
+		var visible;
+		files.addEventListener('change', onChange, false);
+		function select(part) {
+			if (visible)
+				visible.style.display = 'none';
+			visible = document.getElementById(part);
+			if (!visible)
+				return;
+			files.value = part;
+			visible.style.display = 'block';
+			location.hash = part;
+		}
+		function onChange() {
+			select(files.value);
+			window.scrollTo(0, 0);
+		}
+		if (location.hash != "") {
+			select(location.hash.substr(1));
+		}
+		if (!visible) {
+			select("file0");
+		}
+	})();
+	</script>
+</html>

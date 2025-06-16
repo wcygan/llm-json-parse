@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    ports:
+      - "8081:8081"
+    environment:
+      - LLM_SERVER_URL=http://mock-llm:8080
+      - PORT=8081
+    depends_on:
+      - mock-llm
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  mock-llm:
+    image: nginx:alpine
+    ports:
+      - "8080:80"
+    volumes:
+      - ./tests/fixtures/mock-llm.conf:/etc/nginx/nginx.conf:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
